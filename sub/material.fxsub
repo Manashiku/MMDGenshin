@@ -1,0 +1,43 @@
+float get_material_regions(float2 uv)
+{
+    float region = tex2D(lightmap_sampler, uv).w;
+    // material reigon id texture is stored in alpha channel of _light texture 
+
+    // set default material states
+    bool material_2 = false; 
+    bool material_3 = false; 
+    bool material_4 = false; 
+    bool material_5 = false; 
+    // set the materials to true depending on the ifdefs
+    #ifdef USE_MATERIAL_2
+    material_2 = !material_2;
+    #endif
+    #ifdef USE_MATERIAL_3
+    material_3 = !material_3;
+    #endif
+    #ifdef USE_MATERIAL_4
+    material_4 = !material_4;
+    #endif
+    #ifdef USE_MATERIAL_5
+    material_5 = !material_5;
+    #endif
+
+    float material = (material_2 && (region >= 0.8f)) ? 2.0f : 1.0f;
+    material       = (material_3 && (region >= 0.4f && region <= 0.6f)) ? 3.0f : material;
+    material       = (material_4 && (region >= 0.2f && region <= 0.4f)) ? 4.0f : material;
+    material       = (material_5 && (region >= 0.6f && region <= 0.8f)) ? 5.0f : material;
+    return material;
+}
+
+float4 material_color(float2 uv)
+{
+    float material = get_material_regions(uv);
+
+    float4 color = COLOR_1;
+    color = (material==2) ? COLOR_2 : color;
+    color = (material==3) ? COLOR_3 : color;
+    color = (material==4) ? COLOR_4 : color;
+    color = (material==5) ? COLOR_5 : color;
+
+    return color;
+}

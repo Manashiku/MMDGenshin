@@ -1,0 +1,104 @@
+void normal_mapping(float vface, float3 pos_ws, float2 uv, inout float3 normal)
+{
+    // initialize normal map
+    float4 normal_map = float4(0.5f, 0.5f, 0.0f, 0.0f);
+    #ifdef USE_NORMAL_TEXTURE
+    // sample normal map texture
+    normal_map = tex2D(normalmap_sampler, uv);
+    #endif
+    normal_map.xy = normalize(normal_map * 2.0f - 1.0f);
+    normal_map.z = max(NORMAL_BUMP_SCALE, 0.001f);
+    normal_map = normalize(normal_map);
+
+    // world space position derivative
+    float3 p_dx = ddx(pos_ws);
+    float3 p_dy = ddy(pos_ws);
+
+    // texture coord derivative
+    float3 uv_dx; 
+    uv_dx.xy = ddx(uv);
+    float3 uv_dy;
+    uv_dy.xy = ddy(uv);
+
+    uv_dy.z = -uv_dx.y;
+    uv_dx.z = uv_dy.x;
+
+    // this functions the same way as the w component of a traditional set of tangents.
+    // determinent of the uv the direction of the bitangent
+    float3 uv_det = dot(uv_dx.xz, uv_dy.yz);
+    uv_det = -sign(uv_det);
+
+    // normals are inverted in the case of a back-facing poly
+    // useful for the two sided dresses and what not... 
+    float3 corrected_normal = normal * vface;
+
+    float2 tangent_direction = uv_det.xy * uv_dy.yz;
+    float3 tangent = (tangent_direction.y * p_dy.xyz) + (p_dx * tangent_direction.x);
+    tangent = normalize(tangent);
+
+    float3 bitangent = (corrected_normal.yzx * tangent.zxy) - (corrected_normal.zxy * tangent.yzx); 
+    bitangent = bitangent * -uv_det;
+
+    float3x3 tbn = {tangent, bitangent, corrected_normal};
+
+    float3 mapped_normals = mul(normal_map.xyz, tbn);
+    mapped_normals = normalize(mapped_normals); // for some reason, this normalize messes things up in mmd
+
+    mapped_normals = (0.99f >= normal_map.z) ? mapped_normals : corrected_normal;
+    
+   
+    normal = mapped_normals;
+}
+
+// since the line is part of the normal map, i'll just simply do this stuff here.. 
+void line_coloring(float screenspace_depth,  float2 uv, inout float3 color)
+{
+    // initialize input color for line color grabbing
+    float3 in_color = color;
+
+    // sample line texture from normal map blue channel
+    float line_tex = 0.0f;
+    #ifdef USE_NORMAL_TEXTURE 
+    line_tex = tex2D(normalmap_sampler, uv).z;
+    #endif
+
+    // get line color
+    float3 line_color = (LINE_MULTIPLIER.xyz * in_color.xyz + -in_color.xyz) * LINE_MULTIPLIER.www;
+
+    // in unity, they have access to dx10 and above semantics
+    // so this would actually be the depth value gotten from hlslcc_FragCoord
+    // hlslcc_FragCoord = hlslcc_FragCoord = float4(gl_FragCoord.xyz, 1.0/gl_FragCoord.w);
+    // line_depth = hlslcc_FragCoord.z / hlslcc_FragCoord.w
+    // but i had to manually calculate this using the position and transform it into screenspace
+    // since dx9 conviently doesnt have the right things delcared for this.. 
+    float line_depth = screenspace_depth;
+    line_depth = zbuffer_param.z * line_depth + zbuffer_param.w;
+    line_depth = 1.0f / line_depth;
+
+    // controlled depth
+    float cont_depth = LINE_DISTANCE_CONTROL.x * line_depth + LINE_THICKNESS;
+    cont_depth = min(cont_depth, min(LINE_DISTANCE_CONTROL.y, 0.99f));
+
+    line_depth = (line_depth >= LINE_DISTANCE_CONTROL.z) ? 1.0f : 0.0f;
+
+    cont_depth = 1.0f - cont_depth;
+
+    float smooth_inv = -LINE_SMOOTHNESS * line_depth + cont_depth;
+    line_depth = LINE_SMOOTHNESS * line_depth + cont_depth;
+    line_depth = -smooth_inv + line_depth; 
+
+    float lines = line_tex - smooth_inv;
+
+    line_depth = 1.0f / line_depth;
+    lines = lines * line_depth;
+    lines = clamp(lines, 0.0f, 1.0f);
+    line_depth = lines * -2.0f + 3.0f;
+    lines = lines * lines;
+    lines = lines * line_depth;
+
+
+    // x = 
+
+    // output modified color 
+    color = lines * line_color + color;
+}

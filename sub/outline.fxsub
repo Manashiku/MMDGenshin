@@ -1,0 +1,79 @@
+float4 outline_coloring(float2 uv)
+{
+    float4 color = float4((float3)0.0f, 1.0f);
+
+    float material = get_material_regions(uv);
+
+    color = (material == 1.0f) ? OUTLINE_COLOR_1 : color;
+    color = (material == 2.0f) ? OUTLINE_COLOR_2 : color;
+    color = (material == 3.0f) ? OUTLINE_COLOR_3 : color;
+    color = (material == 4.0f) ? OUTLINE_COLOR_4 : color;
+    color = (material == 5.0f) ? OUTLINE_COLOR_5 : color;
+
+    return color;
+}
+
+float outline_lerp(float start, float end, float Z_start, float Z_end, float Z)
+{
+    float t = (Z - Z_start) / max(Z_end - Z_start, 0.001); // linear 
+    t = clamp(t, 0.0f, 1.0f);
+    return lerp(start, end, t);
+}
+
+
+float4 outline_calc(float4 pos, float3 normal, float outline_thresh)
+{
+
+    // this fixes an error on some characters
+    // pos.z = lerp(pos.z, pos.z+0.015, outline_thresh);
+
+    // i think they use the model position instead but this does fine
+    float3 ws_view = camera_position - mul(pos, mm_w);
+    // float3 ws_view = mul(pos.xyz, (float3x3)mmd_w);
+    ws_view = normalize(ws_view);
+
+    // models have material values for these but ive never seen a model
+    // with different ones so ive decided to hardcode these instead
+    // if someone finds a model with values that are different, open an issue
+    float4 depth_adjust = float4(0.01f, 2.0f,  6.0f, 1.0f);
+    float4 scale_adjust = float4(0.1f,  0.25f, 0.6f, 0.0f);
+
+    float fov = 1.0f;
+    if(mm_p[3].w)
+    {
+        fov = 0.5f; // fov if perspective is off
+    }
+    else 
+    {
+        fov = 2.414f / mm_p[1].y;
+    }
+
+    float depth = -ws_view.z * fov; // fov corrected depth
+    
+    float2 range;
+    float2 scale;
+
+    if(depth < depth_adjust.y)
+    {
+        range = depth_adjust.xy;
+        scale = scale_adjust.xy;
+    }
+    else
+    {
+        range = depth_adjust.zw;
+        scale = scale_adjust.zw;
+    }
+
+    float offset = outline_lerp(scale.x, scale.y, range.x, range.y, depth);
+
+    offset = offset * 0.414f * outline_thresh * OUTLINE_WIDTH;
+    // normal.z = 0.1f;
+    normal = normalize(normal);
+    pos.xyz = pos.xyz + normal * offset ;
+
+    float4x4 mm_vp = mul(mm_v, mm_p);
+    pos = mul(pos, mm_vp);
+    return pos;
+}
+
+// #endif

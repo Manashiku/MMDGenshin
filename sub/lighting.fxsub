@@ -1,0 +1,90 @@
+// this isnt based on genshin stuff, this is just stuff i want to add for fun... and since ive never done this kind of thing before lmao
+float pl_face_shading(in float2 uv, in float3 light_position)
+{
+    // sample textures for both directions
+    float shadow_right = tex2Dlod(facemap_sampler, float4(uv, 0.0f, 0.0f)).w;
+    float shadow_left  = tex2Dlod(facemap_sampler, float4(1.0f - uv.x, uv.y, 0.0f, 0.0f)).w;
+    float light_map = tex2D(lightmap_sampler, uv).w;
+
+
+    // get bone forward and right rotations 
+    float3 head_right  = head_bone._11_12_13;
+    float3 head_foward = head_bone._31_32_33;
+
+    
+
+    //=============================================
+    // calculate dot products
+    // only use the x and z axis since y is useless and messes things up
+    float rdotl = dot((head_right.xz),  normalize(-light_position.xz));
+    float fdotl = dot((head_foward.xz),          (-light_position.xz));
+
+    // calculate light angle
+    float angle = ( acos(rdotl) / 3.14159f ) * 2.0f;
+    // initialize shadow
+    float shadow = 1.0f; // if u dont do this, the if statement breaks shadow
+
+
+    if(rdotl > 0.0f )
+    {
+        angle = 1.0f - angle;
+        shadow = shadow_right;
+    }  
+    else
+    {
+        angle = angle - 1.0f;
+        shadow = shadow_left;
+    }
+
+
+    float shadow_step = step(angle, shadow) ;
+    float facing_step = step(fdotl, 0.0f);
+
+    shadow_step = shadow_step * facing_step;
+    //=============================================
+
+
+    return shadow_step;
+}
+
+void extra_lighting(in float3 normal, in float2 uv, in float4 model_pos, in float3 point_light_1, in float3 point_light_2, in float3 point_light_3, in float3 point_light_4, in float3 point_light_5, in float3 point_light_6, in float3 point_light_7, in float3 point_light_8, inout float3 color)
+{
+    #ifdef ENABLE_POINT_LIGHTS
+    float3 light_1 = normalize( model_pos.xyz.xyz / model_pos.w - point_light_pos_1.xyz);
+    float3 light_2 = normalize( model_pos.xyz.xyz / model_pos.w - point_light_pos_2.xyz);
+    float3 light_3 = normalize( model_pos.xyz.xyz / model_pos.w - point_light_pos_3.xyz);
+    float3 light_4 = normalize( model_pos.xyz.xyz / model_pos.w - point_light_pos_4.xyz);
+    float3 light_5 = normalize( model_pos.xyz.xyz / model_pos.w - point_light_pos_5.xyz);
+    float3 light_6 = normalize( model_pos.xyz.xyz / model_pos.w - point_light_pos_6.xyz);
+    float3 light_7 = normalize( model_pos.xyz.xyz / model_pos.w - point_light_pos_7.xyz);
+    float3 light_8 = normalize( model_pos.xyz.xyz / model_pos.w - point_light_pos_8.xyz);
+    #ifndef USE_FACE_SHADOW_MAP
+    light_1 = saturate(dot(-light_1, normal) * 3.0f) * (1.0f / point_light_1) * (float3(light_r_1, light_g_1, light_b_1) * light_bright_1);
+    light_2 = saturate(dot(-light_2, normal) * 3.0f) * (1.0f / point_light_2) * (float3(light_r_2, light_g_2, light_b_2) * light_bright_2);
+    light_3 = saturate(dot(-light_3, normal) * 3.0f) * (1.0f / point_light_3) * (float3(light_r_3, light_g_3, light_b_3) * light_bright_3);
+    light_4 = saturate(dot(-light_4, normal) * 3.0f) * (1.0f / point_light_4) * (float3(light_r_4, light_g_4, light_b_4) * light_bright_4);
+    light_5 = saturate(dot(-light_5, normal) * 3.0f) * (1.0f / point_light_5) * (float3(light_r_5, light_g_5, light_b_5) * light_bright_5);
+    light_6 = saturate(dot(-light_6, normal) * 3.0f) * (1.0f / point_light_6) * (float3(light_r_6, light_g_6, light_b_6) * light_bright_6);
+    light_7 = saturate(dot(-light_7, normal) * 3.0f) * (1.0f / point_light_7) * (float3(light_r_7, light_g_7, light_b_7) * light_bright_7);
+    light_8 = saturate(dot(-light_2, normal) * 3.0f) * (1.0f / point_light_8) * (float3(light_r_8, light_g_8, light_b_8) * light_bright_8);
+    #else
+    light_1 = pl_face_shading(uv, light_1) * (1.0f / point_light_1) * (float3(light_r_1, light_g_1, light_b_1) * light_bright_1);
+    light_2 = pl_face_shading(uv, light_2) * (1.0f / point_light_2) * (float3(light_r_2, light_g_2, light_b_2) * light_bright_2);
+    light_3 = pl_face_shading(uv, light_3) * (1.0f / point_light_3) * (float3(light_r_3, light_g_3, light_b_3) * light_bright_3);
+    light_4 = pl_face_shading(uv, light_4) * (1.0f / point_light_4) * (float3(light_r_4, light_g_4, light_b_4) * light_bright_4);
+    light_5 = pl_face_shading(uv, light_5) * (1.0f / point_light_5) * (float3(light_r_5, light_g_5, light_b_5) * light_bright_5);
+    light_6 = pl_face_shading(uv, light_6) * (1.0f / point_light_6) * (float3(light_r_6, light_g_6, light_b_6) * light_bright_6);
+    light_7 = pl_face_shading(uv, light_7) * (1.0f / point_light_7) * (float3(light_r_7, light_g_7, light_b_7) * light_bright_7);
+    light_8 = pl_face_shading(uv, light_8) * (1.0f / point_light_8) * (float3(light_r_8, light_g_8, light_b_8) * light_bright_8);
+    #endif
+
+    color.xyz = (light_1_enable == 1) ? color.xyz + light_1 : color.xyz;
+    color.xyz = (light_2_enable == 1) ? color.xyz + light_2 : color.xyz;
+    color.xyz = (light_3_enable == 1) ? color.xyz + light_3 : color.xyz;
+    color.xyz = (light_4_enable == 1) ? color.xyz + light_4 : color.xyz;
+    color.xyz = (light_5_enable == 1) ? color.xyz + light_5 : color.xyz;
+    color.xyz = (light_6_enable == 1) ? color.xyz + light_6 : color.xyz;
+    color.xyz = (light_7_enable == 1) ? color.xyz + light_7 : color.xyz;
+    color.xyz = (light_8_enable == 1) ? color.xyz + light_8 : color.xyz;
+    #endif
+}

@@ -1,0 +1,40 @@
+float3 specular_shading(float3 normal, float3 view, float2 uv, float lightmap_red, float lightmap_blue)
+{
+    // separate material regions 
+    float2 material = get_material_regions(uv);
+
+    // calculate the half vector
+
+    float3 half_vector = normalize(view + -light_direction);  
+
+
+    float ndoth = dot(normal, half_vector);
+    ndoth = max(ndoth, 0.00001);
+
+    float shininess = SPECULAR_SHINE_1;
+    float spec_multi = SPECULAR_MULTI_1;
+
+    shininess  = (material == 2) ? SPECULAR_SHINE_2 : shininess;
+    spec_multi = (material == 2) ? SPECULAR_MULTI_2 : spec_multi;
+    shininess  = (material == 3) ? SPECULAR_SHINE_3 : shininess;
+    spec_multi = (material == 3) ? SPECULAR_MULTI_3 : spec_multi;
+    shininess  = (material == 4) ? SPECULAR_SHINE_4 : shininess;
+    spec_multi = (material == 4) ? SPECULAR_MULTI_4 : spec_multi;
+    shininess  = (material == 5) ? SPECULAR_SHINE_5 : shininess;
+    spec_multi = (material == 5) ? SPECULAR_MULTI_5 : spec_multi;
+
+    ndoth = pow(ndoth, shininess);
+
+    float3 specular = spec_multi * SPECULAR_COLOR;
+    specular = saturate(specular - model_specular_dark) * (model_specular_bright + 1.0f) * (float3(model_specular_r, model_specular_g, model_specular_b) + 1.0f);
+    specular = saturate(specular - cont_specular_dark) * (cont_specular_bright + 1.0f) * (float3(cont_specular_r, cont_specular_g, cont_specular_b) + 1.0f);
+
+    lightmap_blue = 1.0f - lightmap_blue;
+
+    specular = (lightmap_blue < ndoth) ? specular : (float3)0.0f;
+    specular = (lightmap_red < 0.9f) ? specular : (float3)0.0f;
+    specular = (!use_subtexture && use_spheremap) ? (float3)0.0f : specular; 
+    // return specular * ndoth;
+
+    return specular;    
+}

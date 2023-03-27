@@ -1,0 +1,292 @@
+#include "genshin_header.fxsub" 
+//============================================================================//
+// structures : 
+struct vs_in
+{
+    float4 pos : POSITION;
+    float3 normal : NORMAL;
+    float2 uv_a   : TEXCOORD0;
+    float2 uv_b   : TEXCOORD1;
+    float4 vertex : TEXCOORD2;
+};
+
+struct vs_out 
+{
+    float4 pos    : POSITION;
+    float4 uv     : TEXCOORD0;
+    float3 normal : TEXCOORD1;
+    float3 view   : TEXCOORD2;
+    float4 pos_ws : TEXCOORD3;
+    float4 light_power_a : TEXCOORD4;
+    float4 light_power_b : TEXCOORD5;
+    float4 vertex : COLOR0;
+};
+
+struct edge_in
+{
+    float4 pos : POSITION;
+    float3 normal : TEXCOORD4;
+    float2 uv_a   : TEXCOORD0;
+    float2 uv_b   : TEXCOORD1;
+    float4 vertex : TEXCOORD2;
+    // float3 tangent : TEXCOORD4;
+};
+
+struct edge_out 
+{
+    float4 pos    : POSITION;
+    float4 uv     : TEXCOORD0;
+};
+//============================================================================//
+// vertex shaders :
+
+#ifdef MIKUMIKUMOVING 
+vs_out vs_model(MMM_SKINNING_INPUT IN, vs_in i)
+{
+	MMM_SKINNING_OUTPUT mmm = MMM_SkinnedPositionNormal(IN.Pos, IN.Normal, IN.BlendWeight, IN.BlendIndices, IN.SdefC, IN.SdefR0, IN.SdefR1);
+    i.pos = mmm.Position;
+    i.normal = mmm.Normal;
+#else
+vs_out vs_model(vs_in i)
+{
+#endif
+    vs_out o;
+    o.pos = mul(i.pos, mm_wvp);
+    o.uv = float4(i.uv_a, i.uv_b);
+    o.normal = mul(i.normal, (float3x3)mm_w);
+    o.view = camera_position - mul(i.pos.xyz, (float3x3)mm_w);
+    o.pos_ws = mul(i.pos, mm_w);
+    o.light_power_a.x = distance(o.pos_ws.xyz, point_light_pos_1.xyz / point_light_pos_1.w);
+    o.light_power_a.y = distance(o.pos_ws.xyz, point_light_pos_2.xyz / point_light_pos_2.w);
+    o.light_power_a.z = distance(o.pos_ws.xyz, point_light_pos_3.xyz / point_light_pos_3.w);
+    o.light_power_a.w = distance(o.pos_ws.xyz, point_light_pos_4.xyz / point_light_pos_4.w);
+    o.light_power_b.x = distance(o.pos_ws.xyz, point_light_pos_5.xyz / point_light_pos_5.w);
+    o.light_power_b.y = distance(o.pos_ws.xyz, point_light_pos_6.xyz / point_light_pos_6.w);
+    o.light_power_b.z = distance(o.pos_ws.xyz, point_light_pos_7.xyz / point_light_pos_7.w);
+    o.light_power_b.w = distance(o.pos_ws.xyz, point_light_pos_8.xyz / point_light_pos_8.w);
+    // o.pos_ws = o.pos;
+    o.vertex = i.vertex; // vertex color
+    return o;
+}
+#ifdef MIKUMIKUMOVING 
+edge_out vs_edge(MMM_SKINNING_INPUT IN,edge_in i)
+{
+	MMM_SKINNING_OUTPUT mmm = MMM_SkinnedPositionNormal(IN.Pos, IN.AddUV4, IN.BlendWeight, IN.BlendIndices, IN.SdefC, IN.SdefR0, IN.SdefR1);
+    i.pos = mmm.Position;
+    i.normal = mmm.Normal;
+#else
+edge_out vs_edge(edge_in i)
+{
+#endif
+    edge_out o;
+    // i.pos.xyz = i.pos.xyz + i.normal * 0.05f * i.vertex.a;
+    // o.pos = mul(i.pos, mm_wvp);
+    o.pos = outline_calc(i.pos, i.normal, i.vertex.a); 
+    o.uv = float4(i.uv_a, i.uv_b);
+    return o;
+}
+
+//============================================================================//
+// pixel shaders :
+float4 ps_model(vs_out i, float vface : VFACE, uniform bool backface_uv2) : COLOR0
+{
+    // initialize inputs:
+    float2 uv = i.uv.xy;
+    float3 normal = normalize(i.normal);
+    float3 view   = normalize(i.view);
+    float4 vertex = i.vertex;
+    normal = (vface != -1) ? normal : -normal; 
+    if(backface_uv2) uv.xy = i.uv.zw;
+    // uv.xy = i.uv.zw;
+
+    // get screenspace depth, genshin uses a dx11 vpos semantic which dx9 only has about half of
+    // so i need to do it manually
+    float4 pos_wvp = mul(i.pos, mm_wvp);
+    float4 position = float4(i.pos_ws.xyz/i.pos_ws.w, 1.0f/i.pos_ws.w);
+    position.y = position.y * -1.0f;
+    position.xy = (position.xy + 1.0f) * 0.5f;
+
+    float screenspace_depth = position.z;
+
+    // normal mapping function 
+    #ifdef USE_NORMAL_TEXTURE
+    normal_mapping(vface, i.pos_ws.xyz, uv, normal);
+    #endif
+
+    // sample lightmap
+    float4 lightmap = tex2D(lightmap_sampler, uv);
+
+    // material regions : 
+    float region = get_material_regions(uv);
+
+    // ndotl for ramp
+    float2 shadow_region = 0.0f;
+    shadow_ndotl(normal, uv, vertex.xy, shadow_region);// shadow_out is updated in function
+
+    // ramp coords :
+    float2 ramp_coords = (region * 0.1f) - 0.05f; 
+
+    ramp_coords.x = shadow_region; 
+    ramp_coords.x = ramp_coords + 0.01f; // fixes error that 0.0 is lighter than the rest of the ramp 
+    ramp_coords.x = (ramp_coords.x < 0.0f) ? 0.0f : ramp_coords;
+    ramp_coords.x = (ramp_coords.x > 1.0f) ? 1.0f : ramp_coords; 
+    #ifdef USE_RAMP_TEXTURE
+    #ifdef MIKUMIKUMOVING
+    // because MikuMikuMoving has a different toon texture semantic  which isnt exposed like in MMD
+    // have to sample it using this, tex2Dlod guarantees that the mip mapping cannot 
+    // mess up the ndotl sampling 
+    float3 warm = tex2Dlod(MMM_ToonTexSampler, float4(ramp_coords, 0.0f, 0.0f));
+    float3 cool = tex2Dlod(MMM_ToonTexSampler,float4(ramp_coords + float2(0.0f, 0.5f), 0.0f, 0.0f));
+    #else
+    float3 warm = tex2Dlod(ramp_sampler, float4(ramp_coords, 0.0f, 0.0f));
+    float3 cool = tex2Dlod(ramp_sampler, float4(ramp_coords + float2(0.0f, 0.5f), 0.0f, 0.0f));
+    #endif
+    float3 shadow = lerp(warm, cool, timeofday);
+    #else // if shadow ramps are turned off it will fall back to user input colors 
+    float3 shadow = shadow_coloring(uv);
+    #endif
+    if(use_spheremap && !use_subtexture)
+    {
+        shadow = shadow_coloring(uv);
+    } 
+    shadow = (shadow - model_shadow_dark) * (model_shadow_bright + 1.0f) * (float3(model_shadow_r, model_shadow_g, model_shadow_b) + 1.0f);
+    shadow = (shadow - cont_shadow_dark) * (cont_shadow_bright + 1.0f) * (float3(cont_shadow_r, cont_shadow_g, cont_shadow_b) + 1.0f);
+    shadow_region.x = saturate(shadow_region.x);
+    shadow_region.x =  step( 0.975f, shadow_region.x);
+    shadow = lerp(shadow, (float3)1.0f, step( 0.975f, shadow_region.x));
+    // they dont do it like this in the game code but this is the easiest and thing im most used to
+    // shadow = shadow * saturate(model_color.xyz + 0.25f); // this will decrease the shadow brightness when the light color is decreased
+
+    // specular shading
+    float3 specular = specular_shading(normal, view, uv, lightmap.x, lightmap.z);
+    // specular = specular - model_specular_dark * (model_specular_bright + 1.0f) * (float3(model_specular_r, model_specular_g, model_specular_b) + 1.0f);
+   
+ 
+    // initialize color  
+    float4 final_color = 1.0f;
+    final_color = final_color * model_color; // colored by material
+    
+    // sample diffuse texture  
+    // this is going to be a mess to read :)
+    float4 diffuse = tex2D(diffuse_sampler, uv.xy);
+    diffuse.xyz = diffuse.xyz - model_dark + model_bright + float3(model_r, model_g, model_b);
+    diffuse.xyz = diffuse.xyz - cont_dark  + cont_bright  + float3(cont_r, cont_g, cont_b);
+
+    final_color.xyz = final_color.xyz * diffuse.xyz;
+    #ifdef DEBUG_VISUALIZE_LINES 
+    final_color.xyz = 1.0f; // debug testing sdf detail lines 
+    #endif 
+    #ifdef USE_TEXTURE_LINE  
+    line_coloring(screenspace_depth, uv, final_color.xyz);  
+    #endif
+    #if MATERIAL_ALPHA_USE == 3 // if material alpha is set to blush
+    final_color.xyz = lerp(final_color.xyz, BLUSH_COLOR, saturate(diffuse.w * BLUSH_STRENGTH * blush_slider));
+    #endif
+    final_color.xyz = final_color.xyz * material_color(uv).xyz;
+    #ifndef DEBUG_VISUALIZE_LINES
+    final_color.xyz = final_color.xyz * shadow;  
+    #ifdef USE_METAL_MAT 
+    metal_shading(lightmap.x, lightmap.z, normal, view, shadow_region.x, final_color.xyz);
+    #endif
+    #ifdef USE_SPECULAR_MAT     
+    final_color.xyz = saturate(final_color + specular);     
+    #endif 
+    #endif
+    #ifdef DEBUG_VISUALIZE_NORMALS
+    final_color.xyz = normal;
+    #endif
+    #ifdef DEBUG_VISUALIZE_NORMALS_B
+    final_color.xyz = normal * 0.5f + 0.5f;
+    #endif
+    #ifdef DEBUG_VISUALIZE_SHADOW
+    final_color.xyz = shadow;
+    #endif
+    #if MATERIAL_ALPHA_USE == 1
+    clip(diffuse.w - ALPHA_CUTOFF);
+    #endif
+    #ifndef MIKUMIKUMOVING
+    final_color = final_color * EgColor;
+    #endif
+    #if MATERIAL_ALPHA_USE == 2 // if emissive 
+    // insert code i need to write here ugh
+    #endif
+    if(ray_valid) final_color.xyz = final_color.xyz * (float3)0.66f;
+    // final_color.xyz =  1.0f / pow(i.light_power_a.x, 1.0f);
+    extra_lighting(normal, uv, i.pos_ws, i.light_power_a.x, i.light_power_a.y, i.light_power_a.z, i.light_power_a.w, i.light_power_b.x, i.light_power_b.y, i.light_power_b.z, i.light_power_b.w, final_color.xyz);
+    return final_color;  
+}  
+
+float4 ps_edge(edge_out i, float vface : VFACE) : COLOR0
+{ 
+    float4 edge_color = OUTLINE_COLOR_1;
+    // separate material sections 
+    float material = get_material_regions(i.uv.xy);
+    // update and assign outline colors based on material regions
+    // edge_color = (material == 1) ? OUTLINE_COLOR_1 : edge_color;
+    edge_color = (material == 2) ? OUTLINE_COLOR_2 : edge_color;
+    edge_color = (material == 3) ? OUTLINE_COLOR_3 : edge_color;
+    edge_color = (material == 4) ? OUTLINE_COLOR_4 : edge_color;
+    edge_color = (material == 5) ? OUTLINE_COLOR_5 : edge_color;
+    return edge_color;
+}
+//============================================================================//
+// techniques : 
+technique model_ss_tech < string MMDPass = "object_ss"; > 
+{
+    pass model_front 
+    {
+        cullmode = ccw;
+		VertexShader = compile vs_3_0 vs_model();
+		PixelShader  = compile ps_3_0 ps_model(false);
+    }
+    pass model_back 
+    {
+        cullmode = cw; 
+		VertexShader = compile vs_3_0 vs_model();
+		#ifdef BACKFACE_USE_UV2
+		PixelShader  = compile ps_3_0 ps_model(true);
+        #else
+        PixelShader  = compile ps_3_0 ps_model(false);
+        #endif
+    }
+    #ifdef USE_OUTLINE
+    pass edge 
+    {
+        cullmode = cw;
+		VertexShader = compile vs_3_0 vs_edge();
+		PixelShader  = compile ps_3_0 ps_edge(); 
+    }
+    #endif
+};
+
+
+technique model_tech < string MMDPass = "object"; > 
+{ 
+    pass model_front
+    {
+        cullmode = ccw;
+		VertexShader = compile vs_3_0 vs_model();
+		PixelShader  = compile ps_3_0 ps_model(false);
+    }
+    pass model_back
+    {
+        cullmode = cw;
+		VertexShader = compile vs_3_0 vs_model();
+        #ifdef BACKFACE_USE_UV2
+		PixelShader  = compile ps_3_0 ps_model(true);
+        #else
+        PixelShader  = compile ps_3_0 ps_model(false);
+        #endif
+    }
+    #ifdef USE_OUTLINE
+    pass edge 
+    {
+        cullmode = cw;
+		VertexShader = compile vs_3_0 vs_edge();
+		PixelShader  = compile ps_3_0 ps_edge();
+    }
+    #endif
+}
+
+technique mmd_shadow < string MMDPass = "shadow"; > {}
+technique mmd_edge < string MMDPass = "edge"; > {}

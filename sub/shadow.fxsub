@@ -1,0 +1,122 @@
+float face_shading(in float2 uv)
+{
+    light_direction = mul(light_direction, (float3x3)light_bone);
+    // sample textures for both directions
+    float shadow_right = tex2Dlod(facemap_sampler, float4(uv, 0.0f, 0.0f)).w;
+    float shadow_left  = tex2Dlod(facemap_sampler, float4(1.0f - uv.x, uv.y, 0.0f, 0.0f)).w;
+    float light_map = tex2D(lightmap_sampler, uv).w;
+
+
+    // get bone forward and right rotations 
+    float3 head_right  = head_bone._11_12_13;
+    float3 head_foward = head_bone._31_32_33;
+
+    
+
+    //=============================================
+    // calculate dot products
+    // only use the x and z axis since y is useless and messes things up
+    float rdotl = dot((head_right.xz),  normalize(-light_direction.xz));
+    float fdotl = dot((head_foward.xz),          (-light_direction.xz));
+
+    // calculate light angle
+    float angle = ( acos(rdotl) / 3.14159f ) * 2.0f;
+    // initialize shadow
+    float shadow = 1.0f; // if u dont do this, the if statement breaks shadow
+
+
+    if(rdotl > 0.0f )
+    {
+        angle = 1.0f - angle;
+        shadow = shadow_right;
+    }  
+    else
+    {
+        angle = angle - 1.0f;
+        shadow = shadow_left;
+    }
+
+
+    float shadow_step = step(angle, shadow) ;
+    float facing_step = step(fdotl, 0.0f);
+
+    shadow_step = shadow_step * facing_step;
+    //=============================================
+
+
+    return shadow_step;
+}
+
+void shadow_ndotl(float3 normal, float2 uv, float2 vertex_color, inout float2 shadow_out)
+{
+    light_direction = mul(light_direction, (float3x3)light_bone);
+
+    float face_shadow = face_shading(uv);
+
+    float light_ao = tex2D(lightmap_sampler, uv).y;
+
+    #ifndef USE_LIGHTMAP_AO
+    light_ao = 1.0f;
+    #endif
+
+    #ifdef USE_VERTEXCOLOR_AO
+    light_ao = light_ao * vertex_color.x;
+    #endif
+
+    float2 ao_ld = float2(light_ao < 0.05f,light_ao > 0.95f);
+
+    // ndotl 
+    float ndotl = dot(normal, -light_direction.xyz);
+    ndotl = (ndotl * 0.5 + 0.5f);
+
+    float shadow_ao = (light_ao + ndotl) * 0.5f;
+
+    shadow_ao = ao_ld.y ? 1.0f : shadow_ao;
+    shadow_ao = ao_ld.x ? 0.0f : shadow_ao; 
+
+    bool shadow_area = shadow_ao < SHADOW_LIGHT_AREA;
+    shadow_ao = (-shadow_ao) + SHADOW_LIGHT_AREA;
+    float shadow_div = shadow_ao / SHADOW_LIGHT_AREA;
+
+    float shadow_width = vertex_color.y;
+    // float shadow_width = vertex_color.y * vertex_color.y;
+    // shadow_width = max(shadow_width, 0.5f);
+    shadow_width = shadow_width * SHADOW_RAMP_WIDTH;
+    #ifndef USE_VERTEXCOLOR_RAMP_WIDTH
+    shadow_width = SHADOW_RAMP_WIDTH;
+    #endif
+
+    shadow_div = shadow_div / shadow_width;
+    shadow_div = min(shadow_div, 1.0f);
+    shadow_div = 1.0f - shadow_div;
+
+    #ifdef USE_FACE_SHADOW_MAP
+    if(use_spheremap && !use_subtexture) shadow_div = face_shadow;
+    #endif
+
+    shadow_out = shadow_div; 
+}
+
+float3 shadow_coloring(float2 uv)
+{
+    // separate material regions 
+    float material = get_material_regions(uv);
+    float3 warm = 1.0f;
+    float3 cool = 1.0f; // initialize warm and cool
+    
+    // update warm and cool colors
+    warm = (material == 1) ? SHADOW_WARM_COLOR_1 : warm;
+    warm = (material == 2) ? SHADOW_WARM_COLOR_2 : warm;
+    warm = (material == 3) ? SHADOW_WARM_COLOR_3 : warm;
+    warm = (material == 4) ? SHADOW_WARM_COLOR_4 : warm;
+    warm = (material == 5) ? SHADOW_WARM_COLOR_5 : warm;
+    cool = (material == 1) ? SHADOW_COOL_COLOR_1 : cool;
+    cool = (material == 2) ? SHADOW_COOL_COLOR_2 : cool;
+    cool = (material == 3) ? SHADOW_COOL_COLOR_3 : cool;
+    cool = (material == 4) ? SHADOW_COOL_COLOR_4 : cool;
+    cool = (material == 5) ? SHADOW_COOL_COLOR_5 : cool;
+
+    float3 shadow = lerp(warm, cool, timeofday);
+    // float3 shadow = warm;
+    return shadow;
+}

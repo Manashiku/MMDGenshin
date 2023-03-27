@@ -1,0 +1,53 @@
+void metal_shading(in float lightmap_red, in float lightmap_blue, in float3 normal, in float3 view, in float shadow_region, inout float3 metal)
+{
+    //spheremap coords 
+    float2 map;
+    normal = mul(normal, (float3x3)mm_v);
+    normal.x = (normal.x / 2.0f) + 0.5f; 
+    normal.y = (normal.y / 2.0f) + 0.5f;
+    // add the 0.5f bias to set the zero-distortion point at the center of the sphere
+    normal.y = -normal.y; // invert the y axis to correct flipped image
+
+    map = normal.xy; // move normals to map
+    map.xy = map.xy * METAL_TILE;
+
+    bool metal_overide = lightmap_red < 0.9f;
+
+    // spheremap sampling
+    float metal_sphere = tex2Dlod(metal_sampler, float4(map, 0.0f, 0.0f)).x;
+    metal_sphere = metal_sphere * METAL_BRIGHTNESS;
+    metal_sphere = saturate(metal_sphere);
+    float3 metal_color = lerp(METAL_DARK, METAL_LIGHT, metal_sphere);
+    float3 metal_out = metal * metal_color;
+
+    // calculate half vector
+    float3 half_vector = normalize(view + -light_direction.xyz);
+    
+    // get ndoth
+    float ndoth = dot(normal, half_vector);
+    ndoth = max(ndoth, 0.0001f); // values cannot go below 0.0001f
+    ndoth = saturate(pow(ndoth, METAL_SHININESS) *  METAL_SPECULAR_SCALE); 
+
+    if(ndoth > METAL_SHARP_OFFSET)
+    {
+        metal_color = METAL_SHARP_COLOR;
+    }
+    else
+    {
+        #ifdef USE_SPECULAR_RAMP
+        float2 ramp_coords = ndoth;
+        ramp_coords.y = 0.5f; // sample from y center of the texture
+        metal_color = tex2Dlod(specular_ramp_sampler, float4(ramp_coords, 0.0f, 0.0f)).xyz;
+        #else
+        metal_color = ndoth * METAL_SPECULAR_COLOR;
+        #endif
+        metal_color = lightmap_blue * metal_color;
+    }
+    
+    float3 shadow_color = lerp(METAL_SHADOW_COLOR, 1.0f, shadow_region);
+
+    metal_out = metal_out * shadow_color;
+    metal_out = metal_out + metal_color;
+
+    metal = !metal_overide ? metal_out : metal; 
+}

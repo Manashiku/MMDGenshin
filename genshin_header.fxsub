@@ -1,0 +1,247 @@
+//============================================================================//
+//                  Genshin Impact recreation shader for MMD
+//                               By: Manashiku
+//============================================================================//
+// FLAGS
+
+#define ENABLE_POINT_LIGHTS // this will cause some slow down on weaker pcs, be warned 
+//============================================================================//
+// MATRICES : 
+float4x4 mm_wvp    : WORLDVIEWPROJECTION;
+float4x4 mm_w      : WORLD;
+float4x4 mm_v      : VIEW;
+float4x4 mm_p      : PROJECTION;
+float4x4 mm_wv_it  : WORLDVIEWINVERSETRANSPOSE;
+float4x4 mm_wvp_it : WORLDVIEWPROJECTIONINVERSETRANSPOSE;
+
+//============================================================================//
+// SCREEN SIZE AND HALF PIXEL
+float2 viewportSize : VIEWPORTPIXELSIZE;
+static float2 halfpixel_offset = (float2(0.5, 0.5) / viewportSize);
+
+//Used to linearize Z buffer values. x is (1-far/near), y is (far/near), z is (x/far) and w is (y/far).
+static float near = 1.0f; 
+static float far  = 100.f;
+static float z_x = 1.0f - far / near;
+static float z_y = far / near;
+static float4 zbuffer_param = float4(z_x, z_y, z_x / far, z_y / far);
+//============================================================================//
+// CAMERA AND LIGHT
+#ifdef MIKUMIKUMOVING
+float3 light_direction : DIRECTION0 < string Object = "Light"; >;
+#else
+float3 light_direction : DIRECTION < string Object = "Light"; >;
+#endif
+
+float3 camera_position  : POSITION < string Object = "Camera"; >;
+float timeofday : CONTROLOBJECT < string name = "Controller.pmx"; string item = "TimeOfDay";>;
+float4x4 head_bone : CONTROLOBJECT < string name = "(self)"; string item = "light_link"; >;
+float4x4 light_bone : CONTROLOBJECT < string name = "(self)"; string item = "light_rotate"; >;
+
+//------------ self morphs ------------//
+float blush_slider          : CONTROLOBJECT < string name = "(self)"; string item = BLUSH_SLIDER_NAME;>;
+float model_shadow_dark     : CONTROLOBJECT < string name = "(self)"; string item = "shadow_dark"; >;
+float model_shadow_bright   : CONTROLOBJECT < string name = "(self)"; string item = "shadow_bright"; >;
+float model_shadow_r        : CONTROLOBJECT < string name = "(self)"; string item = "shadow_r"; >;
+float model_shadow_g        : CONTROLOBJECT < string name = "(self)"; string item = "shadow_g"; >;
+float model_shadow_b        : CONTROLOBJECT < string name = "(self)"; string item = "shadow_b"; >;
+float model_specular_dark   : CONTROLOBJECT < string name = "(self)"; string item = "specular_dark"; >;
+float model_specular_bright : CONTROLOBJECT < string name = "(self)"; string item = "specular_bright"; >;
+float model_specular_r      : CONTROLOBJECT < string name = "(self)"; string item = "specular_r"; >;
+float model_specular_g      : CONTROLOBJECT < string name = "(self)"; string item = "specular_g"; >;
+float model_specular_b      : CONTROLOBJECT < string name = "(self)"; string item = "specular_b"; >;
+float model_dark            : CONTROLOBJECT < string name = "(self)"; string item = "model_dark";>;
+float model_bright          : CONTROLOBJECT < string name = "(self)"; string item = "model_bright";>;
+float model_r               : CONTROLOBJECT < string name = "(self)"; string item = "model_r";>;
+float model_g               : CONTROLOBJECT < string name = "(self)"; string item = "model_g";>;
+float model_b               : CONTROLOBJECT < string name = "(self)"; string item = "model_b";>;
+//------------ controller morphs ------------//
+float cont_shadow_dark     : CONTROLOBJECT < string name = "Controller.pmx"; string item = "shadow_dark"; >;
+float cont_shadow_bright   : CONTROLOBJECT < string name = "Controller.pmx"; string item = "shadow_dark"; >;
+float cont_shadow_r        : CONTROLOBJECT < string name = "Controller.pmx"; string item = "shadow_dark"; >;
+float cont_shadow_g        : CONTROLOBJECT < string name = "Controller.pmx"; string item = "shadow_dark"; >;
+float cont_shadow_b        : CONTROLOBJECT < string name = "Controller.pmx"; string item = "specular_dark"; >;
+float cont_specular_dark   : CONTROLOBJECT < string name = "Controller.pmx"; string item = "specular_dark"; >;
+float cont_specular_bright : CONTROLOBJECT < string name = "Controller.pmx"; string item = "specular_dark"; >;
+float cont_specular_r      : CONTROLOBJECT < string name = "Controller.pmx"; string item = "specular_dark"; >;
+float cont_specular_g      : CONTROLOBJECT < string name = "Controller.pmx"; string item = "specular_dark"; >;
+float cont_specular_b      : CONTROLOBJECT < string name = "Controller.pmx"; string item = "specular_dark"; >;
+float cont_dark            : CONTROLOBJECT < string name = "Controller.pmx"; string item = "color_dark";>;
+float cont_bright          : CONTROLOBJECT < string name = "Controller.pmx"; string item = "color_bright";>;
+float cont_r               : CONTROLOBJECT < string name = "Controller.pmx"; string item = "color_r";>;
+float cont_g               : CONTROLOBJECT < string name = "Controller.pmx"; string item = "color_g";>;
+float cont_b               : CONTROLOBJECT < string name = "Controller.pmx"; string item = "color_b";>;
+// only supporting up to 8 extra lights because im not looking to mentally scar myself
+// point light 1
+float4 point_light_pos_1 : CONTROLOBJECT < string name = "Controller.pmx"; string item = "POINT_LIGHT_1"; >; // position of point light 1 bone
+float  light_1_enable    : CONTROLOBJECT < string name = "Controller.pmx"; string item = "light_enable_1";>; // i could probably right this as a bool but oh well
+float  light_bright_1    : CONTROLOBJECT < string name = "Controller.pmx"; string item = "light_bright_1";>; 
+float  light_r_1         : CONTROLOBJECT < string name = "Controller.pmx"; string item = "light_r_1";>;
+float  light_g_1         : CONTROLOBJECT < string name = "Controller.pmx"; string item = "light_g_1";>;
+float  light_b_1         : CONTROLOBJECT < string name = "Controller.pmx"; string item = "light_b_1";>;
+// point light 2
+float4 point_light_pos_2 : CONTROLOBJECT < string name = "Controller.pmx"; string item = "POINT_LIGHT_2"; >; // position of point light 2 bone
+float  light_2_enable    : CONTROLOBJECT < string name = "Controller.pmx"; string item = "light_enable_2";>; // i could probably right this as a bool but oh well
+float  light_bright_2    : CONTROLOBJECT < string name = "Controller.pmx"; string item = "light_bright_2";>; 
+float  light_r_2         : CONTROLOBJECT < string name = "Controller.pmx"; string item = "light_r_2";>;
+float  light_g_2         : CONTROLOBJECT < string name = "Controller.pmx"; string item = "light_g_2";>;
+float  light_b_2         : CONTROLOBJECT < string name = "Controller.pmx"; string item = "light_b_2";>;
+// point light 3
+float4 point_light_pos_3 : CONTROLOBJECT < string name = "Controller.pmx"; string item = "POINT_LIGHT_3"; >; // position of point light 3 bone
+float  light_3_enable    : CONTROLOBJECT < string name = "Controller.pmx"; string item = "light_enable_3";>; // i could probably right this as a bool but oh well
+float  light_bright_3    : CONTROLOBJECT < string name = "Controller.pmx"; string item = "light_bright_3";>; 
+float  light_r_3         : CONTROLOBJECT < string name = "Controller.pmx"; string item = "light_r_3";>;
+float  light_g_3         : CONTROLOBJECT < string name = "Controller.pmx"; string item = "light_g_3";>;
+float  light_b_3         : CONTROLOBJECT < string name = "Controller.pmx"; string item = "light_b_3";>;
+// point light 4
+float4 point_light_pos_4 : CONTROLOBJECT < string name = "Controller.pmx"; string item = "POINT_LIGHT_4"; >; // position of point light 4 bone
+float  light_4_enable    : CONTROLOBJECT < string name = "Controller.pmx"; string item = "light_enable_4";>; // i could probably right this as a bool but oh well
+float  light_bright_4    : CONTROLOBJECT < string name = "Controller.pmx"; string item = "light_bright_4";>; 
+float  light_r_4         : CONTROLOBJECT < string name = "Controller.pmx"; string item = "light_r_4";>;
+float  light_g_4         : CONTROLOBJECT < string name = "Controller.pmx"; string item = "light_g_4";>;
+float  light_b_4         : CONTROLOBJECT < string name = "Controller.pmx"; string item = "light_b_4";>;
+// point light 5
+float4 point_light_pos_5 : CONTROLOBJECT < string name = "Controller.pmx"; string item = "POINT_LIGHT_5"; >; // position of point light 5 bone
+float  light_5_enable    : CONTROLOBJECT < string name = "Controller.pmx"; string item = "light_enable_5";>; // i could probably right this as a bool but oh well
+float  light_bright_5    : CONTROLOBJECT < string name = "Controller.pmx"; string item = "light_bright_5";>; 
+float  light_r_5         : CONTROLOBJECT < string name = "Controller.pmx"; string item = "light_r_5";>;
+float  light_g_5         : CONTROLOBJECT < string name = "Controller.pmx"; string item = "light_g_5";>;
+float  light_b_5         : CONTROLOBJECT < string name = "Controller.pmx"; string item = "light_b_5";>;
+// point light 6
+float4 point_light_pos_6 : CONTROLOBJECT < string name = "Controller.pmx"; string item = "POINT_LIGHT_6"; >; // position of point light 6 bone
+float  light_6_enable    : CONTROLOBJECT < string name = "Controller.pmx"; string item = "light_enable_6";>; // i could probably right this as a bool but oh well
+float  light_bright_6    : CONTROLOBJECT < string name = "Controller.pmx"; string item = "light_bright_6";>; 
+float  light_r_6         : CONTROLOBJECT < string name = "Controller.pmx"; string item = "light_r_6";>;
+float  light_g_6         : CONTROLOBJECT < string name = "Controller.pmx"; string item = "light_g_6";>;
+float  light_b_6         : CONTROLOBJECT < string name = "Controller.pmx"; string item = "light_b_6";>;
+// point light 7
+float4 point_light_pos_7 : CONTROLOBJECT < string name = "Controller.pmx"; string item = "POINT_LIGHT_7"; >; // position of point light 7 bone
+float  light_7_enable    : CONTROLOBJECT < string name = "Controller.pmx"; string item = "light_enable_7";>; // i could probably right this as a bool but oh well
+float  light_bright_7    : CONTROLOBJECT < string name = "Controller.pmx"; string item = "light_bright_7";>; 
+float  light_r_7         : CONTROLOBJECT < string name = "Controller.pmx"; string item = "light_r_7";>;
+float  light_g_7         : CONTROLOBJECT < string name = "Controller.pmx"; string item = "light_g_7";>;
+float  light_b_7         : CONTROLOBJECT < string name = "Controller.pmx"; string item = "light_b_7";>;
+// point light 8
+float4 point_light_pos_8 : CONTROLOBJECT < string name = "Controller.pmx"; string item = "POINT_LIGHT_8"; >; // position of point light 8 bone
+float  light_8_enable    : CONTROLOBJECT < string name = "Controller.pmx"; string item = "light_enable_8";>; // i could probably right this as a bool but oh well
+float  light_bright_8    : CONTROLOBJECT < string name = "Controller.pmx"; string item = "light_bright_8";>; 
+float  light_r_8         : CONTROLOBJECT < string name = "Controller.pmx"; string item = "light_r_8";>;
+float  light_g_8         : CONTROLOBJECT < string name = "Controller.pmx"; string item = "light_g_8";>;
+float  light_b_8         : CONTROLOBJECT < string name = "Controller.pmx"; string item = "light_b_8";>;
+
+
+//============================================================================//
+// MMD MATERIAL
+float4 material_diffuse : DIFFUSE < string Object  = "Geometry"; >;
+float4 material_ambient : AMBIENT < string Object  = "Geometry"; >;
+float4 material_emissive : EMISSIVE < string Object = "Geometry"; >;
+float3 light_ambient : AMBIENT < string Object  = "Light"; >;
+float3 materialToon : TOONCOLOR;
+float3 light_diffuse : DIFFUSE < string Object  = "Light"; >;
+static float4 model_diffuse = material_diffuse * float4(light_diffuse, 1.0f);
+static float4 model_ambient = saturate(material_ambient * float4(light_ambient, 1.0f) + material_emissive);
+static float4 model_color = saturate(model_ambient + model_diffuse); // this final model color will be multiplied by the diffuse texture
+
+float4 EgColor;
+bool rim_valid : CONTROLOBJECT < string name = "rim.x";>;
+bool ray_valid : CONTROLOBJECT < string name = "ray.x";>; // check if raycast is loaded 
+
+bool use_spheremap;
+bool use_subtexture;
+
+//============================================================================//
+// TEXTURES : 
+texture2D diffuse_texture : MATERIALTEXTURE; 
+texture2D lightmap_texture : MATERIALSPHEREMAP; 
+#ifdef USE_FACE_SHADOW_MAP
+texture2D facemap_texture <string ResourceName = FACE_LIGHTMAP;>;
+#else 
+texture2D facemap_texture;
+#endif
+#ifdef USE_NORMAL_TEXTURE
+texture2D normalmap_texture <string ResourceName = USE_NORMAL_TEXTURE;>;
+#else
+texture2D normalmap_texture;
+#endif
+#ifdef USE_METAL_MAT
+texture2D metal_texture < string ResourceName = USE_METAL_MAT;>;
+#else
+texture2D metal_texture;
+#endif
+#ifdef MIKUMIKUMOVING 
+texture2D ramp_texture;
+#else
+texture2D ramp_texture : MATERIALTOONTEXTURE;
+#endif
+#ifdef USE_SPECULAR_RAMP
+texture2D specular_ramp_texture <string ResourceName = USE_SPECULAR_RAMP;>;
+#else
+texture2D specular_ramp_texture;
+#endif
+
+//============================================================================//
+// SAMPLERS : 
+sampler2D diffuse_sampler = sampler_state
+{
+    texture = <diffuse_texture>;
+    FILTER = ANISOTROPIC;
+    ADDRESSU = WRAP;
+    ADDRESSV = WRAP;
+};
+
+sampler2D lightmap_sampler = sampler_state
+{
+    texture = <lightmap_texture>;
+    FILTER = ANISOTROPIC;
+    ADDRESSU = WRAP;
+    ADDRESSV = WRAP;
+};
+
+sampler2D facemap_sampler = sampler_state
+{
+    texture = <facemap_texture>;
+    
+    FILTER = ANISOTROPIC;
+    ADDRESSU = WRAP;
+    ADDRESSV = WRAP;
+};
+sampler2D normalmap_sampler = sampler_state
+{
+    texture = <normalmap_texture>;
+    FILTER = ANISOTROPIC;
+    ADDRESSU = WRAP;
+    ADDRESSV = WRAP;
+};
+sampler2D metal_sampler = sampler_state
+{
+    texture = <metal_texture>;
+    SrgbTexture = true;
+    FILTER = ANISOTROPIC;
+    ADDRESSU = WRAP;
+    ADDRESSV = WRAP;
+};
+// #ifdef USE_RAMP_TEXTURE
+sampler2D ramp_sampler = sampler_state
+{
+    texture = <ramp_texture>;
+    FILTER = ANISOTROPIC;
+    ADDRESSU = CLAMP;
+    ADDRESSV = CLAMP;
+};
+// #endif
+
+sampler2D specular_ramp_sampler = sampler_state
+{
+    texture = <specular_ramp_texture>;
+    FILTER = ANISOTROPIC;
+    ADDRESSU = CLAMP;
+    ADDRESSV = CLAMP;
+};
+//============================================================================//
+#include "sub/material.fxsub"
+#include "sub/outline.fxsub"
+#include "sub/shadow.fxsub"
+#include "sub/lighting.fxsub"
+#include "sub/specular.fxsub"
+#include "sub/metal.fxsub"
+#include "sub/normal.fxsub"
