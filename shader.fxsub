@@ -152,8 +152,16 @@ float4 ps_model(vs_out i, float vface : VFACE, uniform bool backface_uv2) : COLO
     shadow = (shadow - model_shadow_dark) * (model_shadow_bright + 1.0f) * (float3(model_shadow_r, model_shadow_g, model_shadow_b) + 1.0f);
     shadow = (shadow - cont_shadow_dark) * (cont_shadow_bright + 1.0f) * (float3(cont_shadow_r, cont_shadow_g, cont_shadow_b) + 1.0f);
     shadow_region.x = saturate(shadow_region.x);
-    shadow_region.x =  step( 0.975f, shadow_region.x);
-    shadow = lerp(shadow, (float3)1.0f, step( 0.975f, shadow_region.x));
+    float shadow_soft = FACE_SHADOW_SOFTNESS;
+    if(shadow_soft <= 0.045f)
+    {
+        shadow_region.x =  step( 0.975f, shadow_region.x);
+        shadow = lerp(shadow, (float3)1.0f, step( 0.975f, shadow_region.x));
+    }
+    else
+    {
+        shadow = lerp(shadow, (float3)1.0f, shadow_region.x);
+    }
     // they dont do it like this in the game code but this is the easiest and thing im most used to
     // shadow = shadow * saturate(model_color.xyz + 0.25f); // this will decrease the shadow brightness when the light color is decreased
 
@@ -213,6 +221,8 @@ float4 ps_model(vs_out i, float vface : VFACE, uniform bool backface_uv2) : COLO
     if(ray_valid) final_color.xyz = final_color.xyz * (float3)0.66f;
     // final_color.xyz =  1.0f / pow(i.light_power_a.x, 1.0f);
     extra_lighting(normal, uv, i.pos_ws, i.light_power_a.x, i.light_power_a.y, i.light_power_a.z, i.light_power_a.w, i.light_power_b.x, i.light_power_b.y, i.light_power_b.z, i.light_power_b.w, final_color.xyz);
+    // final_color.xyz = ramp_coords.x;
+
     return final_color;  
 }  
 
