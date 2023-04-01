@@ -153,7 +153,7 @@ float4 ps_model(vs_out i, float vface : VFACE, uniform bool backface_uv2) : COLO
     shadow = (shadow - cont_shadow_dark) * (cont_shadow_bright + 1.0f) * (float3(cont_shadow_r, cont_shadow_g, cont_shadow_b) + 1.0f);
     shadow_region.x = saturate(shadow_region.x);
     float shadow_soft = FACE_SHADOW_SOFTNESS;
-    #ifdef USE_FACE_SHADOW_MAP 
+    #ifndef USE_FACE_SHADOW_MAP 
         shadow_region.x =  step( 0.975f, shadow_region.x);
         shadow = lerp(shadow, (float3)1.0f, step( 0.975f, shadow_region.x));
     #else
