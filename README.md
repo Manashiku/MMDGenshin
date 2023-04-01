@@ -4,7 +4,7 @@ Shader written for MMD to replicate the visual style of Genshin Impact
 ***
 
 ## How to use:
-> Please see the wiki for this info
+> [Please see the wiki for this info](https://github.com/Manashiku/MMDGenshin/wiki)
 > <br> shader materials created for older versions of the shader will not work with this version. It is highly recommended that you remake them all together since this version of the shader is more accurate than the previous ones.
 > <br> I will not provide any links or file downloads in this repository for texture or unity material files. You'll need to find those yourself. 
 > <br> 
