@@ -239,7 +239,11 @@ float4 ps_edge(edge_out i, float vface : VFACE) : COLOR0
     edge_color = (material == 3) ? OUTLINE_COLOR_3 : edge_color;
     edge_color = (material == 4) ? OUTLINE_COLOR_4 : edge_color;
     edge_color = (material == 5) ? OUTLINE_COLOR_5 : edge_color;
-    edge_color = edge_color * model_color * EgColor;
+    
+    edge_color.xyz = edge_color.xyz * model_color.xyz;
+    #ifndef MIKUMIKUMOVING
+    edge_color = edge_color * EgColor;
+    #endif
     return edge_color;
 }
 //============================================================================//
