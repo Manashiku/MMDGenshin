@@ -179,8 +179,11 @@ float4 ps_model(vs_out i, float vface : VFACE, uniform bool backface_uv2) : COLO
     float4 diffuse = tex2D(diffuse_sampler, uv.xy);
     diffuse.xyz = diffuse.xyz - model_dark + model_bright + float3(model_r, model_g, model_b);
     diffuse.xyz = diffuse.xyz - cont_dark  + cont_bright  + float3(cont_r, cont_g, cont_b);
-
+   
     final_color.xyz = final_color.xyz * diffuse.xyz;
+    #if MATERIAL_ALPHA_USE == 2 // if emissive 
+    final_color.xyz = lerp(final_color.xyz, diffuse.xyz, diffuse.w); // this will remove any lighting effect
+    #endif
     #ifdef DEBUG_VISUALIZE_LINES 
     final_color.xyz = 1.0f; // debug testing sdf detail lines 
     #endif 
@@ -213,10 +216,11 @@ float4 ps_model(vs_out i, float vface : VFACE, uniform bool backface_uv2) : COLO
     clip(diffuse.w - ALPHA_CUTOFF);
     #endif
     #ifndef MIKUMIKUMOVING
+    #if MATERIAL_ALPHA_USE == 2
+    final_color = lerp(final_color * EgColor, final_color, diffuse.w);
+    #else
     final_color = final_color * EgColor;
     #endif
-    #if MATERIAL_ALPHA_USE == 2 // if emissive 
-    // insert code i need to write here ugh
     #endif
     if(ray_valid) final_color.xyz = final_color.xyz * (float3)0.66f;
     // final_color.xyz =  1.0f / pow(i.light_power_a.x, 1.0f);
@@ -237,6 +241,7 @@ float4 ps_edge(edge_out i, float vface : VFACE) : COLOR0
     edge_color = (material == 3) ? OUTLINE_COLOR_3 : edge_color;
     edge_color = (material == 4) ? OUTLINE_COLOR_4 : edge_color;
     edge_color = (material == 5) ? OUTLINE_COLOR_5 : edge_color;
+    edge_color = edge_color * EgColor;
     return edge_color;
 }
 //============================================================================//
