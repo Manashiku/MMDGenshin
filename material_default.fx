@@ -33,7 +33,6 @@
 //====================//     
 //      SHADOW : 
 //====================//
-#define USE_SHADOW_TRANSITION
 #define USE_LIGHTMAP_AO 
 #define USE_VERTEXCOLOR_AO 
 #define USE_VERTEXCOLOR_RAMP_WIDTH   
