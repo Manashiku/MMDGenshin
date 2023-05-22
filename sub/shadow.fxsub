@@ -92,7 +92,8 @@ void shadow_ndotl(float3 normal, float2 uv, float2 vertex_color, inout float2 sh
     shadow_div = 1.0f - shadow_div;
 
     #ifdef USE_FACE_SHADOW_MAP
-    if(use_spheremap && !use_subtexture) shadow_div = face_shadow;
+    //if(use_spheremap && !use_subtexture) shadow_div = face_shadow;
+    shadow_div = face_shadow; // the above line was breaking for some god known reason
     #endif
 
     shadow_out = shadow_div; 
