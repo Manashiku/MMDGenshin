@@ -57,15 +57,15 @@ float model_g               : CONTROLOBJECT < string name = "(self)"; string ite
 float model_b               : CONTROLOBJECT < string name = "(self)"; string item = "model_b";>;
 //------------ controller morphs ------------//
 float cont_shadow_dark     : CONTROLOBJECT < string name = "Controller.pmx"; string item = "shadow_dark"; >;
-float cont_shadow_bright   : CONTROLOBJECT < string name = "Controller.pmx"; string item = "shadow_dark"; >;
-float cont_shadow_r        : CONTROLOBJECT < string name = "Controller.pmx"; string item = "shadow_dark"; >;
-float cont_shadow_g        : CONTROLOBJECT < string name = "Controller.pmx"; string item = "shadow_dark"; >;
-float cont_shadow_b        : CONTROLOBJECT < string name = "Controller.pmx"; string item = "specular_dark"; >;
+float cont_shadow_bright   : CONTROLOBJECT < string name = "Controller.pmx"; string item = "shadow_bright"; >;
+float cont_shadow_r        : CONTROLOBJECT < string name = "Controller.pmx"; string item = "shadow_r"; >;
+float cont_shadow_g        : CONTROLOBJECT < string name = "Controller.pmx"; string item = "shadow_g"; >;
+float cont_shadow_b        : CONTROLOBJECT < string name = "Controller.pmx"; string item = "shadow_b"; >;
 float cont_specular_dark   : CONTROLOBJECT < string name = "Controller.pmx"; string item = "specular_dark"; >;
-float cont_specular_bright : CONTROLOBJECT < string name = "Controller.pmx"; string item = "specular_dark"; >;
-float cont_specular_r      : CONTROLOBJECT < string name = "Controller.pmx"; string item = "specular_dark"; >;
-float cont_specular_g      : CONTROLOBJECT < string name = "Controller.pmx"; string item = "specular_dark"; >;
-float cont_specular_b      : CONTROLOBJECT < string name = "Controller.pmx"; string item = "specular_dark"; >;
+float cont_specular_bright : CONTROLOBJECT < string name = "Controller.pmx"; string item = "specular_bright"; >;
+float cont_specular_r      : CONTROLOBJECT < string name = "Controller.pmx"; string item = "specular_r"; >;
+float cont_specular_g      : CONTROLOBJECT < string name = "Controller.pmx"; string item = "specular_g"; >;
+float cont_specular_b      : CONTROLOBJECT < string name = "Controller.pmx"; string item = "specular_b"; >;
 float cont_dark            : CONTROLOBJECT < string name = "Controller.pmx"; string item = "color_dark";>;
 float cont_bright          : CONTROLOBJECT < string name = "Controller.pmx"; string item = "color_bright";>;
 float cont_r               : CONTROLOBJECT < string name = "Controller.pmx"; string item = "color_r";>;
