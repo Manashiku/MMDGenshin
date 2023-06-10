@@ -21,5 +21,5 @@ Shader written for MMD to replicate the visual style of Genshin Impact
 > - [雪羽](https://zhuanlan.zhihu.com/p/360229590) Early on guidance for the first version of the shader.  
 
 ## Contact 
-> - If you find any issues or have questions, feel free to create a new issue here or DM me on [Twitter](https://twitter.com/Manashiku) or on Discord ( mana#3458 ). 
+> - If you find any issues or bugs, feel free to create a new issue here or DM me on [Twitter](https://twitter.com/Manashiku) or on Discord ( mana#3458 ). 
 > 
