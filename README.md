@@ -22,4 +22,4 @@ Shader written for MMD to replicate the visual style of Genshin Impact
 
 ## Contact 
 > - If you find any bugs, feel free to create a new issue here or DM me on [Twitter](https://twitter.com/Manashiku) or on Discord ( manashiku ). 
-> - Don't dm me asking me to teach you how to use MMD or PMXEditor, there are resources online and I don't have time nor the energy to teach everyone this stuff.
+> - Don't dm me asking me to teach you how to use MMD or PMXEditor, there are resources online and I don't have the time nor the energy to teach everyone this stuff.
