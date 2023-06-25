@@ -29,7 +29,7 @@ struct edge_in
     float2 uv_a   : TEXCOORD0;
     float2 uv_b   : TEXCOORD1;
     float4 vertex : TEXCOORD2;
-    // float3 tangent : TEXCOORD4;
+    float3 tangent : TEXCOORD4;
 };
 
 struct edge_out 
@@ -54,7 +54,7 @@ vs_out vs_model(vs_in i)
     o.pos = mul(i.pos, mm_wvp);
     o.uv = float4(i.uv_a, i.uv_b);
     o.normal = mul(i.normal, (float3x3)mm_w);
-    o.view = camera_position - mul(i.pos.xyz, (float3x3)mm_w);
+    o.view = normalize(camera_position - mul(i.pos, mm_w).xyz);
     o.pos_ws = mul(i.pos, mm_w);
     o.light_power_a.x = distance(o.pos_ws.xyz, point_light_pos_1.xyz / point_light_pos_1.w);
     o.light_power_a.y = distance(o.pos_ws.xyz, point_light_pos_2.xyz / point_light_pos_2.w);
@@ -81,7 +81,7 @@ edge_out vs_edge(edge_in i)
     edge_out o;
     // i.pos.xyz = i.pos.xyz + i.normal * 0.05f * i.vertex.a;
     // o.pos = mul(i.pos, mm_wvp);
-    o.pos = outline_calc(i.pos, i.normal, i.vertex.a); 
+    o.pos = outline_calc(i.pos, i.tangent, i.vertex.a); 
     o.uv = float4(i.uv_a, i.uv_b);
     return o;
 }
@@ -98,6 +98,10 @@ float4 ps_model(vs_out i, float vface : VFACE, uniform bool backface_uv2) : COLO
     normal = (vface != -1) ? normal : -normal; 
     if(backface_uv2) uv.xy = i.uv.zw;
     // uv.xy = i.uv.zw;
+
+    float y_height = (i.pos_ws.y - 10.0f) / 10.0f;
+    y_height = clamp(y_height, 0.00f, 1.0f);
+    float highlight = y_height;
 
     // get screenspace depth, genshin uses a dx11 vpos semantic which dx9 only has about half of
     // so i need to do it manually
@@ -145,10 +149,10 @@ float4 ps_model(vs_out i, float vface : VFACE, uniform bool backface_uv2) : COLO
     #else // if shadow ramps are turned off it will fall back to user input colors 
     float3 shadow = shadow_coloring(uv);
     #endif
-    if(use_spheremap && !use_subtexture)
-    {
-        shadow = shadow_coloring(uv);
-    } 
+    // if(use_spheremap && !use_subtexture)
+    // {
+        // shadow = shadow_coloring(uv);
+    // } 
     shadow = (shadow - model_shadow_dark) * (model_shadow_bright + 1.0f) * (float3(model_shadow_r, model_shadow_g, model_shadow_b) + 1.0f);
     shadow = (shadow - cont_shadow_dark) * (cont_shadow_bright + 1.0f) * (float3(cont_shadow_r, cont_shadow_g, cont_shadow_b) + 1.0f);
     shadow_region.x = saturate(shadow_region.x);
@@ -157,7 +161,6 @@ float4 ps_model(vs_out i, float vface : VFACE, uniform bool backface_uv2) : COLO
         shadow_region.x =  step( 0.975f, shadow_region.x);
         shadow = lerp(shadow, (float3)1.0f, step( 0.975f, shadow_region.x));
     #else
-    
         shadow = lerp(shadow, (float3)1.0f, shadow_region.x);
     #endif
     // they dont do it like this in the game code but this is the easiest and thing im most used to
@@ -215,16 +218,16 @@ float4 ps_model(vs_out i, float vface : VFACE, uniform bool backface_uv2) : COLO
     #endif
     #ifndef MIKUMIKUMOVING
     #if MATERIAL_ALPHA_USE == 2
-    final_color = lerp(final_color * EgColor, final_color, diffuse.w);
+    final_color = lerp(final_color , final_color, diffuse.w);
     #else
+    final_color = final_color ;
+    #endif
+    #endif
     final_color = final_color * EgColor;
-    #endif
-    #endif
     if(ray_valid) final_color.xyz = final_color.xyz * (float3)0.66f;
     // final_color.xyz =  1.0f / pow(i.light_power_a.x, 1.0f);
-    extra_lighting(normal, uv, i.pos_ws, i.light_power_a.x, i.light_power_a.y, i.light_power_a.z, i.light_power_a.w, i.light_power_b.x, i.light_power_b.y, i.light_power_b.z, i.light_power_b.w, final_color.xyz);
-    // final_color.xyz = ramp_coords.x;
 
+    extra_lighting(normal, uv, i.pos_ws, i.light_power_a.x, i.light_power_a.y, i.light_power_a.z, i.light_power_a.w, i.light_power_b.x, i.light_power_b.y, i.light_power_b.z, i.light_power_b.w, final_color.xyz);
     return final_color;  
 }  
 
@@ -239,14 +242,14 @@ float4 ps_edge(edge_out i, float vface : VFACE) : COLOR0
     edge_color = (material == 3) ? OUTLINE_COLOR_3 : edge_color;
     edge_color = (material == 4) ? OUTLINE_COLOR_4 : edge_color;
     edge_color = (material == 5) ? OUTLINE_COLOR_5 : edge_color;
-    
+
     edge_color.xyz = edge_color.xyz * model_color.xyz;
     #ifndef MIKUMIKUMOVING
     edge_color = edge_color * EgColor;
     #endif
     if(ray_valid)
     {
-    	edge_color.xyz = edge_color.xyz * 0.66f;
+        edge_color.xyz = edge_color.xyz * 0.66f;
     }
     return edge_color;
 }
