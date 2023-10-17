@@ -23,7 +23,7 @@ sampler2D diffuse_sampler = sampler_state
 struct vs_in
 {
     float4 pos : POSITION;
-    float3 normal : TEXCOORD4;
+    float3 normal : NORMAL;
     float2 uv_a   : TEXCOORD0;
     float2 uv_b   : TEXCOORD1;
     float4 vertex : TEXCOORD2;
