@@ -81,7 +81,7 @@ edge_out vs_edge(edge_in i)
     edge_out o;
     // i.pos.xyz = i.pos.xyz + i.normal * 0.05f * i.vertex.a;
     // o.pos = mul(i.pos, mm_wvp);
-    o.pos = outline_calc(i.pos, i.tangent, i.vertex.a); 
+    o.pos = outline_calc(i.pos, i.normal, i.vertex.a); 
     o.uv = float4(i.uv_a, i.uv_b);
     return o;
 }
