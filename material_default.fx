@@ -66,6 +66,7 @@
 #define COLOR_2 float4(1.0f, 1.0f, 1.0f, 1.0f) 
 #define SHADOW_WARM_COLOR_2 float4(0.0f, 0.0f, 0.0f, 1.0f)
 #define SHADOW_COOL_COLOR_2 float4(0.0f, 0.0f, 0.0f, 1.0f)
+#define SPECULAR_COLOR_2 float4(1.0f, 1.0f, 1.0f,1.0f)
 #define SPECULAR_MULTI_2 0.1f
 #define SPECULAR_SHINE_2 10.0f
 #define OUTLINE_COLOR_2 float4(0.0f, 0.0f, 0.0f, 1.0f)
@@ -77,6 +78,7 @@
 #define COLOR_3 float4(1.0f, 1.0f, 1.0f, 1.0f)
 #define SHADOW_WARM_COLOR_3 float4(.0f, .0f, .0f, 1.0f)
 #define SHADOW_COOL_COLOR_3 float4(0.0f, 0.0f, 0.0f, 1.0f)  
+#define SPECULAR_COLOR_3 float4(1.0f, 1.0f, 1.0f,1.0f)
 #define SPECULAR_MULTI_3 0.1f 
 #define SPECULAR_SHINE_3 10.0f
 #define OUTLINE_COLOR_3 float4(0.0f, 0.0f, 0.0f, 1.0f)
@@ -88,6 +90,7 @@
 #define COLOR_4 float4(1.0f, 1.0f, 1.0f, 1.0f) 
 #define SHADOW_WARM_COLOR_4 float4(0.0f, 0.0f, 0.0f, 1.0f)
 #define SHADOW_COOL_COLOR_4 float4(0.0f, 0.0f, 0.0f, 1.0f) 
+#define SPECULAR_COLOR_4 float4(1.0f, 1.0f, 1.0f,1.0f)
 #define SPECULAR_MULTI_4 0.1f
 #define SPECULAR_SHINE_4 10.0f
 #define OUTLINE_COLOR_4 float4(0.0, 0.0, 0.0, 1.0f)
@@ -99,6 +102,7 @@
 #define COLOR_5 float4(1.0f, 1.0f, 1.0f, 1.0f) 
 #define SHADOW_WARM_COLOR_5 float4(0.0f, 0.0f, 0.0f, 1.0f)
 #define SHADOW_COOL_COLOR_5 float4(0.0f, 0.0f, 0.0f, 1.0f)
+#define SPECULAR_COLOR_5 float4(1.0f, 1.0f, 1.0f,1.0f)
 #define SPECULAR_MULTI_5 0.1f
 #define SPECULAR_SHINE_5 10.0f 
 #define OUTLINE_COLOR_5 float4(0.0, 0.0, 0.0, 1.0f)
@@ -119,5 +123,25 @@
 #define METAL_SHARP_COLOR        float4(0.5f, 0.5f, 0.5f, 1.0f)
 #define METAL_SPECULAR_COLOR     float4(1.0f, 1.0f, 1.0f, 1.0f)
 #define METAL_SHADOW_COLOR       float4(0.5f, 0.5f, 0.5f, 1.0f)
+
+//====================//
+//       LEATHER 
+//====================//
+#define USE_LEATHER_MAT                         "sub/tex/leathermap.png"
+#define USE_LEATHERLASER_RAMP                   "sub/tex/leatherramp.png"
+#define LEATHER_SPECULAR_COLOR                  float4(1,1,1,1)
+#define LEATHER_SPECULAR_SHIFT                  -0.5f
+#define LEATHER_SPECULAR_RANGE                  50.0f
+#define LEATHER_SPECULAR_SCALE                  0.0f
+#define LEATHER_SPECULAR_SHARPE                 1.0f
+#define LEATHER_SPECULAR_Detail_COLOR           float4(1,1,1,1)
+#define LEATHER_SPECULAR_Detail_RANGE           50.0f
+#define LEATHER_SPECULAR_Detail_SCALE           0.0f
+#define LEATHER_SPECULAR_Detail_SHARPE          1.0f
+#define LEATHER_LASER_TILING                    float2(1,1)
+#define LEATHER_LASER_OFFSET                    float2(0,0)
+#define LEATHER_LASER_SCALE                     0.5f
+#define LEATHER_REFLECT_SCALE                   0.5f
+#define LEATHER_REFLECT_OFFSET                  0.5f
 //============================================================================//
 #include "shader.fxsub"

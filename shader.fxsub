@@ -88,15 +88,22 @@ edge_out vs_edge(edge_in i)
 
 //============================================================================//
 // pixel shaders :
-float4 ps_model(vs_out i, float vface : VFACE, uniform bool backface_uv2) : COLOR0
+float4 ps_model(vs_out i, float vface : VFACE) : COLOR0
 {
     // initialize inputs:
-    float2 uv = i.uv.xy;
+    float2 uv;
+
+    #ifdef BACKFACE_USE_UV2
+        uv = (vface == 1) ? i.uv.xy : i.uv.zw;
+    #else
+        uv = i.uv.xy;
+
+    #endif
     float3 normal = normalize(i.normal);
     float3 view   = normalize(i.view);
     float4 vertex = i.vertex;
     normal = (vface != -1) ? normal : -normal; 
-    if(backface_uv2) uv.xy = i.uv.zw;
+
     // uv.xy = i.uv.zw;
 
     float y_height = (i.pos_ws.y - 10.0f) / 10.0f;
@@ -233,11 +240,11 @@ float4 ps_model(vs_out i, float vface : VFACE, uniform bool backface_uv2) : COLO
 
 float4 ps_edge(edge_out i, float vface : VFACE) : COLOR0
 { 
-    float4 edge_color = OUTLINE_COLOR_1;
+    float4 edge_color = 0;
     // separate material sections 
     float material = get_material_regions(i.uv.xy);
     // update and assign outline colors based on material regions
-    // edge_color = (material == 1) ? OUTLINE_COLOR_1 : edge_color;
+    edge_color = (material == 1) ? OUTLINE_COLOR_1 : edge_color;
     edge_color = (material == 2) ? OUTLINE_COLOR_2 : edge_color;
     edge_color = (material == 3) ? OUTLINE_COLOR_3 : edge_color;
     edge_color = (material == 4) ? OUTLINE_COLOR_4 : edge_color;
@@ -251,6 +258,7 @@ float4 ps_edge(edge_out i, float vface : VFACE) : COLOR0
     {
         edge_color.xyz = edge_color.xyz * 0.66f;
     }
+    // edge_color.xyz = (material == 1);
     return edge_color;
 }
 //============================================================================//
@@ -259,19 +267,9 @@ technique model_ss_tech < string MMDPass = "object_ss"; >
 {
     pass model_front 
     {
-        cullmode = ccw;
+        cullmode = None;
 		VertexShader = compile vs_3_0 vs_model();
-		PixelShader  = compile ps_3_0 ps_model(false);
-    }
-    pass model_back 
-    {
-        cullmode = cw; 
-		VertexShader = compile vs_3_0 vs_model();
-		#ifdef BACKFACE_USE_UV2
-		PixelShader  = compile ps_3_0 ps_model(true);
-        #else
-        PixelShader  = compile ps_3_0 ps_model(false);
-        #endif
+		PixelShader  = compile ps_3_0 ps_model();
     }
     #ifdef USE_OUTLINE
     pass edge 
@@ -288,19 +286,9 @@ technique model_tech < string MMDPass = "object"; >
 { 
     pass model_front
     {
-        cullmode = ccw;
+        cullmode = None;
 		VertexShader = compile vs_3_0 vs_model();
-		PixelShader  = compile ps_3_0 ps_model(false);
-    }
-    pass model_back
-    {
-        cullmode = cw;
-		VertexShader = compile vs_3_0 vs_model();
-        #ifdef BACKFACE_USE_UV2
-		PixelShader  = compile ps_3_0 ps_model(true);
-        #else
-        PixelShader  = compile ps_3_0 ps_model(false);
-        #endif
+		PixelShader  = compile ps_3_0 ps_model();
     }
     #ifdef USE_OUTLINE
     pass edge 

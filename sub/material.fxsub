@@ -22,11 +22,12 @@ float get_material_regions(float2 uv)
     material_5 = !material_5;
     #endif
 
-    float material = (material_2 && (region >= 0.8f)) ? 2.0f : 1.0f;
-    material       = (material_3 && (region >= 0.4f && region <= 0.6f)) ? 3.0f : material;
-    material       = (material_4 && (region >= 0.2f && region <= 0.4f)) ? 4.0f : material;
-    material       = (material_5 && (region >= 0.6f && region <= 0.8f)) ? 5.0f : material;
-    return material;
+    float range = (material_2 && (region >= 0.8f))? 2.0  : 
+                  (material_3 && (region >= 0.4f))? 3.0  :
+                  (material_4 && (region >= 0.2f))? 4.0  :
+                  (material_5 && (region >= 0.6f))? 5.0f : 1.0f;
+    
+    return range;
 }
 
 float4 material_color(float2 uv)
